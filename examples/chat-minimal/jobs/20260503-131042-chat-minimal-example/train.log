@@ -1,0 +1,13 @@
+Loading configuration file /Users/owen/longhaul/examples/chat-minimal/jobs/20260503-131042-chat-minimal-example/mlx-lora-config.yaml
+Loading pretrained model
+
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]
+Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 32626.39it/s]
+Loading datasets
+Warning: Validation set not found or empty. Training will proceed without validation.
+Training
+Trainable parameters: 0.171% (2.638M/1543.714M)
+Starting training..., iters: 6
+Iter 5: Train loss 3.007, Learning Rate 1.000e-05, It/sec 0.423, Tokens/sec 11.602, Trained Tokens 137, Peak mem 1.187 GB
+Iter 6: Train loss 2.605, Learning Rate 1.000e-05, It/sec 22.456, Tokens/sec 71.859, Trained Tokens 153, Peak mem 1.187 GB
+Saved final weights to /Users/owen/longhaul/examples/chat-minimal/jobs/20260503-131042-chat-minimal-example/adapters/adapters.safetensors.

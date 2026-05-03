@@ -1,0 +1,38 @@
+{
+  "name": "chat-minimal-example",
+  "model": {
+    "id": "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+  },
+  "data": {
+    "source": "data/dataset.jsonl",
+    "tool_catalog": "data/tool_catalog.json",
+    "split_seed": "chat-minimal-example"
+  },
+  "training": {
+    "profile": "conservative",
+    "thinking_mode": "omit",
+    "epochs": 3,
+    "batch_size": 1,
+    "effective_batch_size": 4,
+    "learning_rate": 1e-5,
+    "max_seq_length": 1024,
+    "num_layers": 8,
+    "grad_checkpoint": true,
+    "mask_prompt": true,
+    "lora_rank": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "steps_per_report": 5,
+    "steps_per_eval": 10,
+    "val_batches": -1,
+    "save_every": 25,
+    "early_stopping_patience": 2
+  },
+  "outputs": {
+    "jobs_dir": "jobs",
+    "sample_prompts": [
+      "Summarize the assistant style in one sentence.",
+      "Answer a simple user request politely."
+    ]
+  }
+}

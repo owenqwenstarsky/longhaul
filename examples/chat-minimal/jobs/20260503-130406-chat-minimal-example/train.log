@@ -1,0 +1,32 @@
+Calling `python -m mlx_lm.lora...` directly is deprecated. Use `mlx_lm.lora...` or `python -m mlx_lm lora ...` instead.
+Loading configuration file /Users/owen/longhaul/examples/chat-minimal/jobs/20260503-130406-chat-minimal-example/mlx-lora-config.yaml
+Loading pretrained model
+
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Fetching 9 files:  11%|█         | 1/9 [00:00<00:04,  1.76it/s]
+Fetching 9 files:  44%|████▍     | 4/9 [00:24<00:33,  6.66s/it]
+Fetching 9 files: 100%|██████████| 9/9 [00:24<00:00,  2.76s/it]
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.10/3.10.20/Frameworks/Python.framework/Versions/3.10/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/opt/homebrew/Cellar/python@3.10/3.10.20/Frameworks/Python.framework/Versions/3.10/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/lora.py", line 377, in <module>
+    main()
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/lora.py", line 369, in main
+    run(types.SimpleNamespace(**args))
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/lora.py", line 332, in run
+    train_set, valid_set, test_set = load_dataset(args, tokenizer)
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/tuner/datasets.py", line 315, in load_dataset
+    train, valid, test = load_local_dataset(data_path, tokenizer, args)
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/tuner/datasets.py", line 218, in load_local_dataset
+    train, valid, test = [load_subset(data_path / f"{n}.jsonl") for n in names]
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/tuner/datasets.py", line 218, in <listcomp>
+    train, valid, test = [load_subset(data_path / f"{n}.jsonl") for n in names]
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/tuner/datasets.py", line 215, in load_subset
+    return create_dataset(data, tokenizer, config)
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/tuner/datasets.py", line 185, in create_dataset
+    sample = data[0]
+IndexError: list index out of range
+Loading datasets

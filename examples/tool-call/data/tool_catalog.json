@@ -1,0 +1,23 @@
+{
+  "write": {
+    "type": "function",
+    "function": {
+      "name": "write",
+      "description": "Write a file into the workspace.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Workspace-relative file path."
+          },
+          "content": {
+            "type": "string",
+            "description": "Text content to write."
+          }
+        },
+        "required": ["path", "content"]
+      }
+    }
+  }
+}

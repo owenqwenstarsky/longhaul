@@ -1,0 +1,15 @@
+{
+  "model_id": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+  "thinking_mode": "omit",
+  "records": 2,
+  "tool_records": 0,
+  "total_messages": 5,
+  "max_estimated_tokens": 48,
+  "avg_estimated_tokens": 35.5,
+  "split_counts": {
+    "train": 2,
+    "valid": 0,
+    "test": 0
+  },
+  "warnings": []
+}

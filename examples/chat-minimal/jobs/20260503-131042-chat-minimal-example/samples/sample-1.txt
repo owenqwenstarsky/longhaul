@@ -1,0 +1,9 @@
+==========
+I am designed to provide helpful and informative responses to your queries.
+==========
+Prompt: 39 tokens, 26.395 tokens-per-sec
+Generation: 14 tokens, 45.799 tokens-per-sec
+Peak memory: 0.949 GB
+
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]
+Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 93902.33it/s]

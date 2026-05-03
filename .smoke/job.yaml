@@ -1,0 +1,45 @@
+{
+  "name": "qwen-local-job",
+  "model": {
+    "id": "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+  },
+  "data": {
+    "source": "data/dataset.jsonl",
+    "tool_catalog": "data/tool_catalog.json",
+    "split_seed": "teich-tune-v1"
+  },
+  "training": {
+    "profile": "conservative",
+    "thinking_mode": "omit",
+    "epochs": 3,
+    "batch_size": 1,
+    "effective_batch_size": 8,
+    "learning_rate": 1e-05,
+    "max_seq_length": 2048,
+    "num_layers": 8,
+    "grad_checkpoint": true,
+    "mask_prompt": "auto",
+    "lora_rank": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "steps_per_report": 10,
+    "steps_per_eval": 25,
+    "val_batches": -1,
+    "save_every": 50,
+    "early_stopping_patience": 3,
+    "min_records_warn": 50
+  },
+  "outputs": {
+    "jobs_dir": "jobs",
+    "sample_prompts": [
+      "Summarize the assistant behavior you were trained for.",
+      "Respond to a user request in the target style."
+    ]
+  },
+  "safety": {
+    "allow_unsupported_model": false,
+    "warn_lr_above": 5e-05,
+    "warn_rank_above": 32,
+    "warn_small_dataset_below": 50
+  }
+}

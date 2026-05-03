@@ -1,0 +1,3 @@
+
+[train]
+mlx-lm[train]>=0.31.0

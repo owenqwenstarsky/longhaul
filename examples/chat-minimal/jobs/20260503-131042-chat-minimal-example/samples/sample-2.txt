@@ -1,0 +1,9 @@
+==========
+Hello! I'm here to help you with any questions or requests you may have. Please feel free to ask me anything.
+==========
+Prompt: 36 tokens, 90.959 tokens-per-sec
+Generation: 26 tokens, 42.164 tokens-per-sec
+Peak memory: 0.987 GB
+
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]
+Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 199728.76it/s]

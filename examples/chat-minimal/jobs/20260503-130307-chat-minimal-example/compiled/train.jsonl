@@ -1,0 +1,2 @@
+{"messages": [{"role": "system", "content": "You are a concise assistant."}, {"role": "user", "content": "Give me a 3-step plan to start journaling."}, {"role": "assistant", "content": "1. Pick a fixed time each day.\n2. Write only 3-5 sentences so it stays easy.\n3. Review once a week for patterns."}]}
+{"messages": [{"role": "user", "content": "Rewrite this politely: send me the file now."}, {"role": "assistant", "content": "Could you please send me the file when you have a moment?"}]}

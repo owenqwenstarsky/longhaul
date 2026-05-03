@@ -1,0 +1,41 @@
+{
+    "adapter_path": "/Users/owen/longhaul/examples/chat-minimal/jobs/20260503-131042-chat-minimal-example/adapters",
+    "batch_size": 1,
+    "clear_cache_threshold": 0,
+    "config": "/Users/owen/longhaul/examples/chat-minimal/jobs/20260503-131042-chat-minimal-example/mlx-lora-config.yaml",
+    "data": "/Users/owen/longhaul/examples/chat-minimal/jobs/20260503-131042-chat-minimal-example/compiled",
+    "fine_tune_type": "lora",
+    "grad_accumulation_steps": 4,
+    "grad_checkpoint": true,
+    "iters": 6,
+    "learning_rate": 1e-05,
+    "lora_parameters": {
+        "rank": 8,
+        "scale": 2.0,
+        "dropout": 0.05
+    },
+    "lr_schedule": null,
+    "mask_prompt": true,
+    "max_seq_length": 1024,
+    "model": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+    "num_layers": 8,
+    "optimizer": "adam",
+    "optimizer_config": {
+        "adam": {},
+        "adamw": {},
+        "muon": {},
+        "sgd": {},
+        "adafactor": {}
+    },
+    "project_name": null,
+    "report_to": null,
+    "resume_adapter_file": null,
+    "save_every": 25,
+    "seed": 0,
+    "steps_per_eval": 10,
+    "steps_per_report": 5,
+    "test": false,
+    "test_batches": 500,
+    "train": true,
+    "val_batches": -1
+}

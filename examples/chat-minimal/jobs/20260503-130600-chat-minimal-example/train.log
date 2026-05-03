@@ -1,0 +1,29 @@
+Calling `python -m mlx_lm.lora...` directly is deprecated. Use `mlx_lm.lora...` or `python -m mlx_lm lora ...` instead.
+Loading configuration file /Users/owen/longhaul/examples/chat-minimal/jobs/20260503-130600-chat-minimal-example/mlx-lora-config.yaml
+Loading pretrained model
+
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]
+Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 68261.73it/s]
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.10/3.10.20/Frameworks/Python.framework/Versions/3.10/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/opt/homebrew/Cellar/python@3.10/3.10.20/Frameworks/Python.framework/Versions/3.10/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/lora.py", line 377, in <module>
+    main()
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/lora.py", line 369, in main
+    run(types.SimpleNamespace(**args))
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/lora.py", line 341, in run
+    train_model(args, model, train_set, valid_set, training_callback)
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/lora.py", line 238, in train_model
+    linear_to_lora_layers(
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/tuner/utils.py", line 104, in linear_to_lora_layers
+    lora_layers = [(k, to_lora(m)) for k, m in l.named_modules() if k in keys]
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/tuner/utils.py", line 104, in <listcomp>
+    lora_layers = [(k, to_lora(m)) for k, m in l.named_modules() if k in keys]
+  File "/opt/homebrew/lib/python3.10/site-packages/mlx_lm/tuner/utils.py", line 81, in to_lora
+    scale=config["scale"],
+KeyError: 'scale'
+Loading datasets
+Warning: Validation set not found or empty. Training will proceed without validation.
+Training

@@ -1,0 +1,59 @@
+{
+  "name": "chat-minimal-example",
+  "model": {
+    "id": "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+  },
+  "data": {
+    "source": "/Users/owen/longhaul/examples/chat-minimal/data/dataset.jsonl",
+    "tool_catalog": "/Users/owen/longhaul/examples/chat-minimal/data/tool_catalog.json",
+    "split_seed": "chat-minimal-example"
+  },
+  "training": {
+    "profile": "conservative",
+    "thinking_mode": "omit",
+    "epochs": 3,
+    "batch_size": 1,
+    "effective_batch_size": 4,
+    "learning_rate": 1e-05,
+    "max_seq_length": 1024,
+    "num_layers": 8,
+    "grad_checkpoint": true,
+    "mask_prompt": true,
+    "lora_rank": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "steps_per_report": 5,
+    "steps_per_eval": 10,
+    "val_batches": -1,
+    "save_every": 25,
+    "early_stopping_patience": 2,
+    "min_records_warn": 50
+  },
+  "outputs": {
+    "jobs_dir": "/Users/owen/longhaul/examples/chat-minimal/jobs",
+    "sample_prompts": [
+      "Summarize the assistant style in one sentence.",
+      "Answer a simple user request politely."
+    ]
+  },
+  "safety": {
+    "allow_unsupported_model": false,
+    "warn_lr_above": 5e-05,
+    "warn_rank_above": 32,
+    "warn_small_dataset_below": 50
+  },
+  "_config_path": "/Users/owen/longhaul/examples/chat-minimal/job.yaml",
+  "resolved_model": {
+    "model_id": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+    "family": "qwen2.5",
+    "approx_params_b": 1.5,
+    "max_seq_length": 2048,
+    "supports_thinking": false,
+    "quantized": true,
+    "recommended_num_layers": 8
+  },
+  "warnings": [
+    "Dataset has only 2 records; expect higher overfitting risk."
+  ],
+  "_job_dir": "/Users/owen/longhaul/examples/chat-minimal/jobs/20260503-131042-chat-minimal-example"
+}

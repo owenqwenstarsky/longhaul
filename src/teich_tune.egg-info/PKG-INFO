@@ -1,0 +1,101 @@
+Metadata-Version: 2.4
+Name: teich-tune
+Version: 0.1.0
+Summary: Apple-first Qwen fine-tune job runner with a strict TeichAI dataset format.
+Author: OpenAI Codex
+License: MIT
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Provides-Extra: train
+Requires-Dist: mlx-lm[train]>=0.31.0; extra == "train"
+
+# Teich Tune
+
+`teich-tune` is a local CLI for conservative fine-tuning of small Qwen models on Apple Silicon with MLX.
+
+## What v0.1 does
+
+- Validates a strict TeichAI-style JSONL dataset format.
+- Resolves tool definitions from a shared catalog.
+- Compiles canonical records into MLX-compatible `chat` or `tools` JSONL.
+- Applies Qwen-specific conservative defaults aimed at reducing overfitting.
+- Runs one local MLX job at a time with resumable artifacts and reports.
+
+## Install
+
+```bash
+python3 -m pip install -e ".[train]"
+```
+
+If you want only validation and dataset compilation, omit the extra:
+
+```bash
+python3 -m pip install -e .
+```
+
+## Quick start
+
+```bash
+teich-tune init
+teich-tune validate job.yaml
+teich-tune compile -c job.yaml
+teich-tune train -c job.yaml
+```
+
+## Included examples
+
+See [examples/README.md](/Users/owen/longhaul/examples/README.md) for two tiny starter jobs:
+
+- [examples/chat-minimal/job.yaml](/Users/owen/longhaul/examples/chat-minimal/job.yaml)
+- [examples/tool-call/job.yaml](/Users/owen/longhaul/examples/tool-call/job.yaml)
+
+## Canonical dataset format
+
+Each line is one JSON object:
+
+```json
+{
+  "messages": [
+    { "type": "message", "role": "user", "content": "Create PLAN.md" },
+    {
+      "type": "tool_call",
+      "name": "write",
+      "arguments": {
+        "path": "PLAN.md",
+        "content": "# Plan\n..."
+      }
+    },
+    {
+      "type": "tool_result",
+      "tool_call_id": "call_abc123",
+      "name": "write",
+      "content": "Wrote PLAN.md",
+      "is_error": false
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": "The plan has been saved."
+    }
+  ],
+  "tools": ["write"]
+}
+```
+
+Assistant reasoning can be stored separately:
+
+```json
+{
+  "type": "message",
+  "role": "assistant",
+  "thinking": "First I should write the file, then confirm it.",
+  "content": "The file is ready."
+}
+```
+
+By default, `thinking` is omitted from the compiled training set.
+
+## Notes
+
+- The generated `job.yaml` template is JSON text with a `.yaml` extension. JSON is valid YAML, which keeps the bootstrap dependency-free.
+- v0.1 validates a small allowlist of Qwen model IDs rather than claiming blanket support.
