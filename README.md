@@ -13,6 +13,15 @@
 
 ## Install
 
+From PyPI:
+
+```bash
+python3 -m pip install longhaul
+python3 -m pip install "longhaul[train]"
+```
+
+From a local checkout:
+
 ```bash
 python3 -m pip install ".[train]"
 ```
@@ -82,11 +91,24 @@ When `outputs.gguf.enabled` is `true`, `longhaul train` and `longhaul resume` au
 
 ## Included examples
 
-See [examples/README.md](/Users/owen/longhaul/examples/README.md) for two tiny starter jobs:
+See the examples guide:
 
-- [examples/chat-minimal/job.yaml](/Users/owen/longhaul/examples/chat-minimal/job.yaml)
-- [examples/tool-call/job.yaml](/Users/owen/longhaul/examples/tool-call/job.yaml)
-- [examples/glm5-plain-100/job.yaml](/Users/owen/longhaul/examples/glm5-plain-100/job.yaml)
+- [examples/README.md](https://github.com/owenqwenstarsky/longhaul/blob/main/examples/README.md)
+
+- [examples/chat-minimal/job.yaml](https://github.com/owenqwenstarsky/longhaul/blob/main/examples/chat-minimal/job.yaml)
+- [examples/tool-call/job.yaml](https://github.com/owenqwenstarsky/longhaul/blob/main/examples/tool-call/job.yaml)
+- [examples/glm5-plain-100/job.yaml](https://github.com/owenqwenstarsky/longhaul/blob/main/examples/glm5-plain-100/job.yaml)
+
+## Release
+
+This repo includes GitHub Actions Trusted Publishing in
+`.github/workflows/publish.yml`.
+
+To publish:
+
+1. Create the `longhaul` project on PyPI if it does not already exist.
+2. In PyPI project settings, add this GitHub repo as a Trusted Publisher.
+3. Create a GitHub release, or run the publish workflow manually.
 
 ## Prepared subset example
 

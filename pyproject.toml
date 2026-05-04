@@ -10,7 +10,27 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "TEI" }]
+keywords = ["cli", "fine-tuning", "mlx", "llm", "training", "qwen"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Build Tools",
+]
 dependencies = ["PyYAML>=6.0"]
+
+[project.urls]
+Homepage = "https://github.com/owenqwenstarsky/longhaul"
+Repository = "https://github.com/owenqwenstarsky/longhaul"
+Issues = "https://github.com/owenqwenstarsky/longhaul/issues"
 
 [project.optional-dependencies]
 train = ["mlx-lm[train]>=0.31.0"]
