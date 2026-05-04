@@ -3,20 +3,20 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "teich-tune"
+name = "longhaul"
 version = "0.1.0"
-description = "Apple-first Qwen fine-tune job runner with a strict TeichAI dataset format."
+description = "Long Haul by TEI: simple local CLI for preparing and training MLX fine-tunes."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "OpenAI Codex" }]
-dependencies = []
+authors = [{ name = "TEI" }]
+dependencies = ["PyYAML>=6.0"]
 
 [project.optional-dependencies]
 train = ["mlx-lm[train]>=0.31.0"]
 
 [project.scripts]
-teich-tune = "teich_tune.cli:main"
+longhaul = "longhaul.cli:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

@@ -1,10 +1,10 @@
-# Teich Tune
+# Long Haul by TEI
 
-`teich-tune` is a local CLI for conservative fine-tuning of small Qwen models on Apple Silicon with MLX.
+`longhaul` is the CLI for Long Haul by TEI. It prepares datasets, compiles MLX-ready training files, and runs small fine-tunes on Apple Silicon.
 
 ## What v0.1 does
 
-- Validates a strict TeichAI-style JSONL dataset format.
+- Validates a simple structured JSONL dataset format.
 - Resolves tool definitions from a shared catalog.
 - Compiles canonical records into MLX-compatible `chat` or `tools` JSONL.
 - Applies Qwen-specific `conservative` and `expert` training presets.
@@ -14,29 +14,31 @@
 ## Install
 
 ```bash
-python3 -m pip install -e ".[train]"
+python3 -m pip install ".[train]"
 ```
 
-If you want only validation and dataset compilation, omit the extra:
+That installs the `longhaul` CLI plus MLX training dependencies.
+
+If you only want dataset validation and compilation:
 
 ```bash
-python3 -m pip install -e .
+python3 -m pip install .
 ```
 
 ## Quick start
 
 ```bash
-teich-tune init --template chat
-teich-tune validate job.yaml
-teich-tune compile -c job.yaml
-teich-tune train -c job.yaml
+longhaul init --template chat
+longhaul validate job.yaml
+longhaul compile -c job.yaml
+longhaul train -c job.yaml
 ```
 
 Use `--template tools` if you want a starter tool-calling dataset instead of plain chat.
 
 ## GGUF export
 
-`teich-tune` can export a completed MLX LoRA job to GGUF for `llama.cpp` and other GGUF runtimes.
+`longhaul` can export a completed MLX LoRA job to GGUF for `llama.cpp` and other GGUF runtimes.
 
 Requirements:
 
@@ -47,8 +49,8 @@ Requirements:
 Manual export:
 
 ```bash
-teich-tune export /path/to/job
-teich-tune export /path/to/job --quant q8 --quant q4_k_m --quant bf16
+longhaul export /path/to/job
+longhaul export /path/to/job --quant q8 --quant q4_k_m --quant bf16
 ```
 
 Default aliases:
@@ -76,7 +78,7 @@ Recommended config snippet:
 }
 ```
 
-When `outputs.gguf.enabled` is `true`, `teich-tune train` and `teich-tune resume` automatically export GGUF artifacts after evaluation finishes. Exported files are written under `jobs/<job>/exports/gguf/`, and the job report includes the generated GGUF paths.
+When `outputs.gguf.enabled` is `true`, `longhaul train` and `longhaul resume` automatically export GGUF artifacts after evaluation finishes. Exported files are written under `jobs/<job>/exports/gguf/`, and the job report includes the generated GGUF paths.
 
 ## Included examples
 
@@ -158,8 +160,8 @@ By default, `thinking` is omitted from the compiled training set.
 
 - Single-file datasets are split deterministically.
 - Datasets with fewer than 10 records use train+valid only by default.
-- Once the dataset reaches 10 or more records, Teich Tune creates train, valid, and test splits.
-- If no test split exists, `teich-tune eval` falls back to the validation split instead of silently doing nothing.
+- Once the dataset reaches 10 or more records, Long Haul creates train, valid, and test splits.
+- If no test split exists, `longhaul eval` falls back to the validation split instead of silently doing nothing.
 
 ## Artifact policy
 
@@ -170,7 +172,7 @@ Ignored by default:
 - `jobs/`
 - `examples/*/jobs/`
 - `.smoke/`
-- `.teich-tune-validate/`
+- `.longhaul-validate/`
 - `__pycache__/`
 - `*.egg-info/`
 

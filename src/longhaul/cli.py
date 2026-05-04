@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from teich_tune.runner import (
+from longhaul.runner import (
     compile_only,
     init_workspace,
     print_report,
@@ -19,7 +19,10 @@ from teich_tune.runner import (
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="teich-tune")
+    parser = argparse.ArgumentParser(
+        prog="longhaul",
+        description="Long Haul by TEI: prepare datasets and run local MLX fine-tunes.",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     init_parser = subparsers.add_parser("init", help="Create a starter workspace.")

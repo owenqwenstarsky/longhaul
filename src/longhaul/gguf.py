@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
-from teich_tune.config import load_job_config
+from longhaul.config import load_job_config
 
 
 DEFAULT_GGUF_QUANTS = ("q8", "q4")
@@ -279,10 +279,10 @@ def build_gguf_metadata(config: Dict[str, Any]) -> Dict[str, Any]:
     model_id = str(config["model"]["id"])
     metadata: Dict[str, Any] = {
         "general.name": config["name"],
-        "general.author": "teich-tune",
+        "general.author": "TEI",
         "general.basename": model_id.split("/")[-1],
         "general.finetune": "lora",
-        "general.description": f"LoRA fine-tune exported by teich-tune from {model_id}.",
+        "general.description": f"LoRA fine-tune exported by Long Haul by TEI from {model_id}.",
     }
     if "/" in model_id and not model_id.startswith(("/", ".")):
         source_url = f"https://huggingface.co/{model_id}"

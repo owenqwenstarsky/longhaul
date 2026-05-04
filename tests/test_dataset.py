@@ -3,14 +3,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from teich_tune.compiler import compile_record
-from teich_tune.dataset import (
+from longhaul.compiler import compile_record
+from longhaul.dataset import (
     deterministic_tool_call_id,
     load_or_split_dataset,
     plan_auto_split,
     validate_records,
 )
-from teich_tune.registry import resolve_model
+from longhaul.registry import resolve_model
 
 
 class DatasetTests(unittest.TestCase):

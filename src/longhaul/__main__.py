@@ -1,4 +1,4 @@
-from teich_tune.cli import main
+from longhaul.cli import main
 
 
 if __name__ == "__main__":

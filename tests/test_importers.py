@@ -1,6 +1,6 @@
 import unittest
 
-from teich_tune.importers import (
+from longhaul.importers import (
     convert_glm_reasoning_row,
     split_records,
     stable_subset_order,

@@ -57,14 +57,14 @@ DEFAULT_AUTO_SPLIT: Dict[str, Any] = {
 
 
 BASE_JOB_CONFIG: Dict[str, Any] = {
-    "name": "qwen-local-job",
+    "name": "longhaul-job",
     "model": {
         "id": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
     },
     "data": {
         "source": "data/dataset.jsonl",
         "tool_catalog": "data/tool_catalog.json",
-        "split_seed": "teich-tune-v1",
+        "split_seed": "longhaul-v1",
         "auto_split": DEFAULT_AUTO_SPLIT,
     },
     "training": {

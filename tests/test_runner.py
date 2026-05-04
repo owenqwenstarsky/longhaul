@@ -7,9 +7,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from teich_tune.config import dump_yaml_compatible_json, load_job_config
-from teich_tune.gguf import resolve_gguf_targets
-from teich_tune.runner import (
+from longhaul.config import dump_yaml_compatible_json, load_job_config
+from longhaul.gguf import resolve_gguf_targets
+from longhaul.runner import (
     build_mlx_config,
     compile_only,
     compute_grad_accumulation,
@@ -192,7 +192,7 @@ class RunnerTests(unittest.TestCase):
     def test_build_mlx_config_sets_grad_accumulation(self) -> None:
         job_dir = compile_only(self.config_path)
         manifest = json.loads((Path(job_dir) / "compiled" / "dataset_manifest.json").read_text(encoding="utf-8"))
-        from teich_tune.registry import resolve_model
+        from longhaul.registry import resolve_model
 
         config = load_job_config(self.config_path)
         model_spec = resolve_model(config["model"]["id"])
@@ -251,7 +251,7 @@ class RunnerTests(unittest.TestCase):
                 return -15 if self.signals else 0
 
         fake_process = FakeProcess()
-        with patch("teich_tune.runner.subprocess.Popen", return_value=fake_process):
+        with patch("longhaul.runner.subprocess.Popen", return_value=fake_process):
             with patch("builtins.print"):
                 exit_code = _run_streaming_command(
                     ["python3", "-m", "mlx_lm", "lora"],
@@ -264,7 +264,7 @@ class RunnerTests(unittest.TestCase):
 
         self.assertEqual(exit_code, -15)
         self.assertEqual(fake_process.signals, [signal.SIGTERM])
-        self.assertIn("Early stopping triggered by teich-tune.", log_path.read_text(encoding="utf-8"))
+        self.assertIn("Early stopping triggered by longhaul.", log_path.read_text(encoding="utf-8"))
 
     def test_streaming_command_does_not_stop_on_final_validation_iteration(self) -> None:
         log_path = self.root / "train.log"
@@ -287,7 +287,7 @@ class RunnerTests(unittest.TestCase):
                 return -15 if self.signals else 0
 
         fake_process = FakeProcess()
-        with patch("teich_tune.runner.subprocess.Popen", return_value=fake_process):
+        with patch("longhaul.runner.subprocess.Popen", return_value=fake_process):
             with patch("builtins.print"):
                 exit_code = _run_streaming_command(
                     ["python3", "-m", "mlx_lm", "lora"],
@@ -300,7 +300,7 @@ class RunnerTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(fake_process.signals, [])
-        self.assertNotIn("Early stopping triggered by teich-tune.", log_path.read_text(encoding="utf-8"))
+        self.assertNotIn("Early stopping triggered by longhaul.", log_path.read_text(encoding="utf-8"))
 
     def test_init_workspace_chat_template_is_plain_chat(self) -> None:
         workspace = self.root / "starter"
@@ -312,16 +312,16 @@ class RunnerTests(unittest.TestCase):
         self.assertTrue(all(event["type"] == "message" for event in dataset["messages"]))
 
     def test_job_warnings_flag_small_datasets(self) -> None:
-        from teich_tune.config import load_job_config
-        from teich_tune.registry import resolve_model
+        from longhaul.config import load_job_config
+        from longhaul.registry import resolve_model
 
         config = load_job_config(self.config_path)
         model_spec = resolve_model(config["model"]["id"])
         warnings = job_warnings(config, {"records": 1, "warnings": [], "tool_records": 0}, model_spec)
         self.assertTrue(any("overfitting risk" in item for item in warnings))
 
-    @patch("teich_tune.runner.run_eval")
-    @patch("teich_tune.runner._run_streaming_command", return_value=0)
+    @patch("longhaul.runner.run_eval")
+    @patch("longhaul.runner._run_streaming_command", return_value=0)
     def test_resume_uses_existing_adapter_when_present(self, _run_streaming, _run_eval) -> None:
         job_dir = compile_only(self.config_path)
         job_path = Path(job_dir)
@@ -333,9 +333,9 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(str(resumed), str(job_path))
         self.assertEqual(mlx_config["resume_adapter_file"], str(adapter_dir / "adapters.safetensors"))
 
-    @patch("teich_tune.runner.run_export")
-    @patch("teich_tune.runner.run_eval")
-    @patch("teich_tune.runner._run_streaming_command", return_value=0)
+    @patch("longhaul.runner.run_export")
+    @patch("longhaul.runner.run_eval")
+    @patch("longhaul.runner._run_streaming_command", return_value=0)
     def test_resume_auto_exports_when_enabled(self, _run_streaming, _run_eval, mock_run_export) -> None:
         config = example_config(self.root)
         config["outputs"]["gguf"] = {
@@ -353,8 +353,8 @@ class RunnerTests(unittest.TestCase):
         run_resume(job_dir)
         mock_run_export.assert_called_once_with(job_path)
 
-    @patch("teich_tune.runner.render_report")
-    @patch("teich_tune.runner.generate_samples", return_value=[])
+    @patch("longhaul.runner.render_report")
+    @patch("longhaul.runner.generate_samples", return_value=[])
     def test_eval_skips_when_no_test_split(self, _generate_samples, _render_report) -> None:
         job_dir = compile_only(self.config_path)
         run_eval(job_dir)
@@ -362,9 +362,9 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("Skipped evaluation", eval_log)
         self.assertIn("no validation or test split", eval_log)
 
-    @patch("teich_tune.runner.render_report")
-    @patch("teich_tune.runner.generate_samples", return_value=[])
-    @patch("teich_tune.runner.subprocess.run")
+    @patch("longhaul.runner.render_report")
+    @patch("longhaul.runner.generate_samples", return_value=[])
+    @patch("longhaul.runner.subprocess.run")
     def test_eval_uses_validation_split_when_test_missing(
         self,
         mock_run,
@@ -421,9 +421,9 @@ class RunnerTests(unittest.TestCase):
         eval_log = (Path(job_dir) / "eval.log").read_text(encoding="utf-8")
         self.assertIn("Using validation split", eval_log)
 
-    @patch("teich_tune.gguf.resolve_converter_python", return_value="python3.10")
-    @patch("teich_tune.gguf._brew_llama_cpp_prefix", return_value=None)
-    @patch("teich_tune.gguf.subprocess.run")
+    @patch("longhaul.gguf.resolve_converter_python", return_value="python3.10")
+    @patch("longhaul.gguf._brew_llama_cpp_prefix", return_value=None)
+    @patch("longhaul.gguf.subprocess.run")
     def test_run_export_generates_default_q8_and_q4_artifacts(
         self,
         mock_run,

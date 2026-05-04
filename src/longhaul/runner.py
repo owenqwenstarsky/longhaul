@@ -14,12 +14,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
-from teich_tune.compiler import compile_dataset
-from teich_tune.config import DEFAULT_JOB_CONFIG, dump_yaml_compatible_json, load_job_config, slugify
-from teich_tune.dataset import load_jsonl, write_json
-from teich_tune.gguf import export_job_to_gguf, load_export_manifest, validate_gguf_settings
-from teich_tune.registry import ModelSpec, resolve_model
-from teich_tune.reports import append_metric, load_metrics, parse_metrics_line, write_report
+from longhaul.compiler import compile_dataset
+from longhaul.config import DEFAULT_JOB_CONFIG, dump_yaml_compatible_json, load_job_config, slugify
+from longhaul.dataset import load_jsonl, write_json
+from longhaul.gguf import export_job_to_gguf, load_export_manifest, validate_gguf_settings
+from longhaul.registry import ModelSpec, resolve_model
+from longhaul.reports import append_metric, load_metrics, parse_metrics_line, write_report
 
 
 class JobLockError(RuntimeError):
@@ -241,12 +241,12 @@ def ensure_command(command: str) -> None:
 
 @contextmanager
 def local_job_lock(jobs_dir: str | Path) -> Iterable[Path]:
-    lock_path = Path(jobs_dir) / ".teich-tune.lock"
+    lock_path = Path(jobs_dir) / ".longhaul.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError as exc:
-        raise JobLockError(f"Another teich-tune job is already running: {lock_path}") from exc
+        raise JobLockError(f"Another longhaul job is already running: {lock_path}") from exc
     try:
         os.write(fd, str(os.getpid()).encode("utf-8"))
         os.close(fd)
@@ -318,7 +318,7 @@ def eta_line(step: int, total_iters: int, elapsed_seconds: float) -> Optional[st
     total_estimate = seconds_per_iter * total_iters
     progress = (bounded_step / total_iters) * 100
     return (
-        f"[teich-tune] progress={bounded_step}/{total_iters} ({progress:.1f}%) "
+        f"[longhaul] progress={bounded_step}/{total_iters} ({progress:.1f}%) "
         f"elapsed={format_duration(elapsed_seconds)} "
         f"eta={format_duration(eta_seconds)} "
         f"total_est={format_duration(total_estimate)}"
@@ -372,7 +372,7 @@ def _run_streaming_command(
                 bad_evals += 1
                 if patience > 0 and bad_evals >= patience and (not isinstance(step, int) or step < total_iters):
                     process.send_signal(signal.SIGTERM)
-                    log_handle.write("Early stopping triggered by teich-tune.\n")
+                    log_handle.write("Early stopping triggered by longhaul.\n")
                     break
         return process.wait()
 
@@ -387,7 +387,7 @@ def run_train(config_path: str | Path) -> Path:
         model_spec: ModelSpec = prepared["model_spec"]
         metrics_path = job_dir / "metrics.jsonl"
         log_path = job_dir / "train.log"
-        print(f"[teich-tune] job_dir={job_dir}", flush=True)
+        print(f"[longhaul] job_dir={job_dir}", flush=True)
         mlx_config = build_mlx_config(prepared["config"], job_dir, manifest, model_spec)
         dump_yaml_compatible_json(mlx_config, job_dir / "mlx-lora-config.yaml")
         train_args = [
@@ -433,7 +433,7 @@ def run_resume(job_dir: str | Path) -> Path:
         dump_yaml_compatible_json(mlx_config, job_path / "mlx-lora-config.yaml")
         metrics_path = job_path / "metrics.jsonl"
         log_path = job_path / "train.log"
-        print(f"[teich-tune] job_dir={job_path}", flush=True)
+        print(f"[longhaul] job_dir={job_path}", flush=True)
         exit_code = _run_streaming_command(
             [
                 PYTHON_BIN,
@@ -478,7 +478,7 @@ def run_eval(job_dir: str | Path) -> Path:
     with eval_log_path.open("a", encoding="utf-8") as log_handle:
         if eval_split == "valid":
             log_handle.write("Using validation split for post-train evaluation because no test split was generated.\n")
-            with tempfile.TemporaryDirectory(prefix="teich-tune-eval-") as tmpdir:
+            with tempfile.TemporaryDirectory(prefix="longhaul-eval-") as tmpdir:
                 temp_dir = Path(tmpdir)
                 shutil.copyfile(eval_source, temp_dir / "test.jsonl")
                 result = subprocess.run(
@@ -612,7 +612,7 @@ def compile_only(config_path: str | Path, output_dir: Optional[str | Path] = Non
 
 
 def validate_only(config_path: str | Path) -> Dict[str, Any]:
-    prepared = prepare_job(config_path, explicit_job_dir=Path(".teich-tune-validate"))
+    prepared = prepare_job(config_path, explicit_job_dir=Path(".longhaul-validate"))
     return {
         "job_dir": str(prepared["job_dir"]),
         "manifest": prepared["manifest"],

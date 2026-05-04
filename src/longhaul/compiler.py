@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
-from teich_tune.dataset import ValidationResult, load_json, load_or_split_dataset, write_json, write_jsonl
-from teich_tune.registry import ModelSpec
+from longhaul.dataset import ValidationResult, load_json, load_or_split_dataset, write_json, write_jsonl
+from longhaul.registry import ModelSpec
 
 
 def compile_dataset(

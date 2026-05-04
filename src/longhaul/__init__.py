@@ -1,4 +1,4 @@
-"""Teich Tune package."""
+"""Long Haul by TEI package."""
 
 __all__ = ["__version__"]
 

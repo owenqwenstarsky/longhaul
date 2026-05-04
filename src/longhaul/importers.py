@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
-from teich_tune.dataset import write_json, write_jsonl
+from longhaul.dataset import write_json, write_jsonl
 
 
 THINK_TAG_RE = re.compile(r"(?is)^\s*<think>.*?</think>\s*")
