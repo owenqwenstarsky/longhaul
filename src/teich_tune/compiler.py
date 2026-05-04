@@ -13,11 +13,12 @@ def compile_dataset(
     source: str,
     tool_catalog_path: str | None,
     split_seed: str,
+    split_config: Dict[str, Any] | None,
     output_dir: str | Path,
     thinking_mode: str,
     model_spec: ModelSpec,
 ) -> Dict[str, Any]:
-    split_records, validation = load_or_split_dataset(source, tool_catalog_path, split_seed)
+    split_records, validation = load_or_split_dataset(source, tool_catalog_path, split_seed, split_config=split_config)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     tool_catalog = load_json(tool_catalog_path) if tool_catalog_path else {}
@@ -32,7 +33,13 @@ def compile_dataset(
             split_file.unlink()
         compiled_counts[split_name] = len(compiled)
 
-    manifest = build_manifest(validation, compiled_counts, thinking_mode, model_spec.model_id)
+    manifest = build_manifest(
+        validation,
+        compiled_counts,
+        thinking_mode,
+        model_spec.model_id,
+        split_mode="explicit" if Path(source).is_dir() else "auto",
+    )
     write_json(output_path / "dataset_manifest.json", manifest)
     return manifest
 
@@ -42,11 +49,15 @@ def build_manifest(
     split_counts: Dict[str, int],
     thinking_mode: str,
     model_id: str,
+    split_mode: str,
 ) -> Dict[str, Any]:
     validation.stats.split_counts = split_counts
+    eval_split = "test" if split_counts.get("test", 0) > 0 else "valid" if split_counts.get("valid", 0) > 0 else None
     return {
         "model_id": model_id,
         "thinking_mode": thinking_mode,
+        "split_mode": split_mode,
+        "eval_split": eval_split,
         "records": validation.stats.records,
         "tool_records": validation.stats.tool_records,
         "total_messages": validation.stats.total_messages,

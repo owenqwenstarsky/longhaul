@@ -53,6 +53,7 @@ def write_report(
     warnings: List[str],
     metrics: List[Dict[str, Any]],
     sample_outputs: List[Dict[str, Any]],
+    gguf_outputs: List[Dict[str, Any]] | None = None,
 ) -> None:
     best_valid = best_valid_loss(metrics)
     lines = [
@@ -61,6 +62,8 @@ def write_report(
         f"- Model: `{model_id}`",
         f"- Records: {manifest.get('records', 0)}",
         f"- Splits: {manifest.get('split_counts', {})}",
+        f"- Split mode: `{manifest.get('split_mode', 'auto')}`",
+        f"- Evaluation split: `{manifest.get('eval_split', 'n/a')}`",
         f"- Thinking mode: `{manifest.get('thinking_mode', 'omit')}`",
         f"- Tool records: {manifest.get('tool_records', 0)}",
         f"- Best validation loss: {best_valid if best_valid is not None else 'n/a'}",
@@ -76,6 +79,12 @@ def write_report(
         for sample in sample_outputs:
             lines.append(f"- Prompt: {sample['prompt']}")
             lines.append(f"  Output path: `{sample['path']}`")
+    else:
+        lines.append("- None")
+    lines.extend(["", "## GGUF Exports"])
+    if gguf_outputs:
+        for artifact in gguf_outputs:
+            lines.append(f"- {artifact['quant']}: `{artifact['path']}`")
     else:
         lines.append("- None")
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")

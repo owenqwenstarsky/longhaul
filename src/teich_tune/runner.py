@@ -7,6 +7,8 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
+import time
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +17,7 @@ from typing import Any, Dict, Iterable, List, Optional
 from teich_tune.compiler import compile_dataset
 from teich_tune.config import DEFAULT_JOB_CONFIG, dump_yaml_compatible_json, load_job_config, slugify
 from teich_tune.dataset import load_jsonl, write_json
+from teich_tune.gguf import export_job_to_gguf, load_export_manifest, validate_gguf_settings
 from teich_tune.registry import ModelSpec, resolve_model
 from teich_tune.reports import append_metric, load_metrics, parse_metrics_line, write_report
 
@@ -26,7 +29,7 @@ class JobLockError(RuntimeError):
 PYTHON_BIN = sys.executable or "python3"
 
 
-def init_workspace(base_dir: str | Path) -> List[str]:
+def init_workspace(base_dir: str | Path, template: str = "chat") -> List[str]:
     root = Path(base_dir)
     data_dir = root / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -34,55 +37,79 @@ def init_workspace(base_dir: str | Path) -> List[str]:
     dataset_path = data_dir / "dataset.jsonl"
     job_path = root / "job.yaml"
 
-    tool_catalog = {
-        "write": {
-            "type": "function",
-            "function": {
-                "name": "write",
-                "description": "Write a file to the workspace.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "path": {"type": "string", "description": "Workspace-relative file path."},
-                        "content": {"type": "string", "description": "File contents to write."},
-                    },
-                    "required": ["path", "content"],
+    if template == "chat":
+        tool_catalog: Dict[str, Any] = {}
+        dataset_example = {
+            "messages": [
+                {
+                    "type": "message",
+                    "role": "system",
+                    "content": "You are a concise, practical assistant.",
                 },
-            },
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": "Rewrite this politely: send me the file now.",
+                },
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": "Could you please send me the file when you have a moment?",
+                },
+            ]
         }
-    }
-    dataset_example = {
-        "messages": [
-            {
-                "type": "message",
-                "role": "user",
-                "content": "Create PLAN.md with a short plan.",
-            },
-            {
-                "type": "tool_call",
-                "name": "write",
-                "arguments": {
-                    "path": "PLAN.md",
-                    "content": "# Plan\n- Define requirements\n- Implement MVP\n",
+    elif template == "tools":
+        tool_catalog = {
+            "write": {
+                "type": "function",
+                "function": {
+                    "name": "write",
+                    "description": "Write a file to the workspace.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "path": {"type": "string", "description": "Workspace-relative file path."},
+                            "content": {"type": "string", "description": "File contents to write."},
+                        },
+                        "required": ["path", "content"],
+                    },
                 },
-            },
-            {
-                "type": "tool_result",
-                "tool_call_id": "call_example01",
-                "name": "write",
-                "content": "Wrote PLAN.md",
-                "is_error": False,
-            },
-            {
-                "type": "message",
-                "role": "assistant",
-                "thinking": "I should write the file first, then confirm the result.",
-                "content": "The plan has been saved in PLAN.md.",
-            },
-        ],
-        "tools": ["write"],
-    }
-    dataset_example["messages"][1]["id"] = dataset_example["messages"][2]["tool_call_id"]
+            }
+        }
+        dataset_example = {
+            "messages": [
+                {
+                    "type": "message",
+                    "role": "user",
+                    "content": "Create PLAN.md with a short plan.",
+                },
+                {
+                    "type": "tool_call",
+                    "name": "write",
+                    "arguments": {
+                        "path": "PLAN.md",
+                        "content": "# Plan\n- Define requirements\n- Implement MVP\n",
+                    },
+                },
+                {
+                    "type": "tool_result",
+                    "tool_call_id": "call_example01",
+                    "name": "write",
+                    "content": "Wrote PLAN.md",
+                    "is_error": False,
+                },
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "thinking": "I should write the file first, then confirm the result.",
+                    "content": "The plan has been saved in PLAN.md.",
+                },
+            ],
+            "tools": ["write"],
+        }
+        dataset_example["messages"][1]["id"] = dataset_example["messages"][2]["tool_call_id"]
+    else:
+        raise ValueError("template must be one of: chat, tools")
 
     dump_yaml_compatible_json(DEFAULT_JOB_CONFIG, job_path)
     write_json(tool_catalog_path, tool_catalog)
@@ -94,10 +121,16 @@ def validate_job_config(config: Dict[str, Any]) -> Dict[str, Any]:
     allow_unsupported = bool(config["safety"].get("allow_unsupported_model"))
     model_spec = resolve_model(config["model"]["id"], allow_unsupported=allow_unsupported)
     thinking_mode = config["training"].get("thinking_mode", "omit")
+    split_config = config["data"].get("auto_split", {})
     if thinking_mode not in {"omit", "include"}:
         raise ValueError("training.thinking_mode must be 'omit' or 'include'.")
     if config["training"]["profile"] not in {"conservative", "expert"}:
         raise ValueError("training.profile must be 'conservative' or 'expert'.")
+    if float(split_config.get("train_ratio", 0.9)) <= 0:
+        raise ValueError("data.auto_split.train_ratio must be greater than 0.")
+    if float(split_config.get("valid_ratio", 0.05)) < 0 or float(split_config.get("test_ratio", 0.05)) < 0:
+        raise ValueError("data.auto_split valid/test ratios must be non-negative.")
+    validate_gguf_settings(config)
     return {"model_spec": model_spec}
 
 
@@ -234,6 +267,7 @@ def prepare_job(config_path: str | Path, explicit_job_dir: Optional[str | Path] 
         source=config["data"]["source"],
         tool_catalog_path=config["data"].get("tool_catalog"),
         split_seed=config["data"]["split_seed"],
+        split_config=config["data"].get("auto_split"),
         output_dir=compiled_dir,
         thinking_mode=config["training"]["thinking_mode"],
         model_spec=model_spec,
@@ -256,6 +290,41 @@ def prepare_job(config_path: str | Path, explicit_job_dir: Optional[str | Path] 
     }
 
 
+def select_eval_split(manifest: Dict[str, Any]) -> Optional[str]:
+    eval_split = manifest.get("eval_split")
+    if eval_split in {"test", "valid"}:
+        return eval_split
+    return None
+
+
+def format_duration(seconds: float) -> str:
+    total_seconds = max(0, int(round(seconds)))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours > 0:
+        return f"{hours}h {minutes:02d}m {secs:02d}s"
+    if minutes > 0:
+        return f"{minutes}m {secs:02d}s"
+    return f"{secs}s"
+
+
+def eta_line(step: int, total_iters: int, elapsed_seconds: float) -> Optional[str]:
+    if total_iters <= 0 or step <= 0 or elapsed_seconds <= 0:
+        return None
+    bounded_step = min(step, total_iters)
+    remaining = max(0, total_iters - bounded_step)
+    seconds_per_iter = elapsed_seconds / bounded_step
+    eta_seconds = seconds_per_iter * remaining
+    total_estimate = seconds_per_iter * total_iters
+    progress = (bounded_step / total_iters) * 100
+    return (
+        f"[teich-tune] progress={bounded_step}/{total_iters} ({progress:.1f}%) "
+        f"elapsed={format_duration(elapsed_seconds)} "
+        f"eta={format_duration(eta_seconds)} "
+        f"total_est={format_duration(total_estimate)}"
+    )
+
+
 def _run_streaming_command(
     args: List[str],
     *,
@@ -263,6 +332,7 @@ def _run_streaming_command(
     log_path: Path,
     metrics_path: Path,
     patience: int,
+    total_iters: int,
 ) -> int:
     with log_path.open("a", encoding="utf-8") as log_handle:
         process = subprocess.Popen(
@@ -276,11 +346,22 @@ def _run_streaming_command(
             raise RuntimeError("Failed to capture process stdout.")
         best_valid: Optional[float] = None
         bad_evals = 0
+        started_at = time.monotonic()
+        last_eta_step = 0
         for line in process.stdout:
             log_handle.write(line)
             log_handle.flush()
+            print(line, end="", flush=True)
             metric = parse_metrics_line(line)
             append_metric(metrics_path, metric)
+            step = metric.get("step")
+            if "train_loss" in metric and isinstance(step, int) and step > last_eta_step:
+                rendered_eta = eta_line(step, total_iters, time.monotonic() - started_at)
+                if rendered_eta is not None:
+                    log_handle.write(rendered_eta + "\n")
+                    log_handle.flush()
+                    print(rendered_eta, flush=True)
+                last_eta_step = step
             valid_loss = metric.get("valid_loss")
             if valid_loss is None:
                 continue
@@ -289,7 +370,7 @@ def _run_streaming_command(
                 bad_evals = 0
             else:
                 bad_evals += 1
-                if patience > 0 and bad_evals >= patience:
+                if patience > 0 and bad_evals >= patience and (not isinstance(step, int) or step < total_iters):
                     process.send_signal(signal.SIGTERM)
                     log_handle.write("Early stopping triggered by teich-tune.\n")
                     break
@@ -306,6 +387,7 @@ def run_train(config_path: str | Path) -> Path:
         model_spec: ModelSpec = prepared["model_spec"]
         metrics_path = job_dir / "metrics.jsonl"
         log_path = job_dir / "train.log"
+        print(f"[teich-tune] job_dir={job_dir}", flush=True)
         mlx_config = build_mlx_config(prepared["config"], job_dir, manifest, model_spec)
         dump_yaml_compatible_json(mlx_config, job_dir / "mlx-lora-config.yaml")
         train_args = [
@@ -322,10 +404,13 @@ def run_train(config_path: str | Path) -> Path:
             log_path=log_path,
             metrics_path=metrics_path,
             patience=int(prepared["config"]["training"]["early_stopping_patience"]),
+            total_iters=int(mlx_config["iters"]),
         )
         if exit_code != 0:
             raise RuntimeError(f"Training failed with exit code {exit_code}. See {log_path}.")
         run_eval(job_dir)
+        if bool(prepared["config"]["outputs"].get("gguf", {}).get("enabled")):
+            run_export(job_dir)
         return job_dir
 
 
@@ -348,6 +433,7 @@ def run_resume(job_dir: str | Path) -> Path:
         dump_yaml_compatible_json(mlx_config, job_path / "mlx-lora-config.yaml")
         metrics_path = job_path / "metrics.jsonl"
         log_path = job_path / "train.log"
+        print(f"[teich-tune] job_dir={job_path}", flush=True)
         exit_code = _run_streaming_command(
             [
                 PYTHON_BIN,
@@ -361,10 +447,13 @@ def run_resume(job_dir: str | Path) -> Path:
             log_path=log_path,
             metrics_path=metrics_path,
             patience=int(config["training"]["early_stopping_patience"]),
+            total_iters=int(mlx_config["iters"]),
         )
         if exit_code != 0:
             raise RuntimeError(f"Resume failed with exit code {exit_code}. See {log_path}.")
         run_eval(job_path)
+        if bool(config["outputs"].get("gguf", {}).get("enabled")):
+            run_export(job_path)
     return job_path
 
 
@@ -377,30 +466,58 @@ def run_eval(job_dir: str | Path) -> Path:
     eval_log_path = job_path / "eval.log"
     manifest = json.loads((job_path / "compiled" / "dataset_manifest.json").read_text(encoding="utf-8"))
     adapter_path = job_path / "adapters"
-    if int(manifest.get("split_counts", {}).get("test", 0)) <= 0 or not (job_path / "compiled" / "test.jsonl").exists():
-        eval_log_path.write_text("Skipped evaluation: no test split was generated.\n", encoding="utf-8")
+    eval_split = select_eval_split(manifest)
+    if eval_split is None:
+        eval_log_path.write_text("Skipped evaluation: no validation or test split was generated.\n", encoding="utf-8")
         sample_outputs = generate_samples(job_path, config)
         render_report(job_path, config, sample_outputs)
         return job_path
+    eval_source = job_path / "compiled" / f"{eval_split}.jsonl"
+    if not eval_source.exists():
+        raise ValueError(f"Missing evaluation source file {eval_source}.")
     with eval_log_path.open("a", encoding="utf-8") as log_handle:
-        result = subprocess.run(
-            [
-                PYTHON_BIN,
-                "-m",
-                "mlx_lm",
-                "lora",
-                "--model",
-                config["model"]["id"],
-                "--adapter-path",
-                str(adapter_path),
-                "--data",
-                str(job_path / "compiled"),
-                "--test",
-            ],
-            cwd=str(Path.cwd()),
-            capture_output=True,
-            text=True,
-        )
+        if eval_split == "valid":
+            log_handle.write("Using validation split for post-train evaluation because no test split was generated.\n")
+            with tempfile.TemporaryDirectory(prefix="teich-tune-eval-") as tmpdir:
+                temp_dir = Path(tmpdir)
+                shutil.copyfile(eval_source, temp_dir / "test.jsonl")
+                result = subprocess.run(
+                    [
+                        PYTHON_BIN,
+                        "-m",
+                        "mlx_lm",
+                        "lora",
+                        "--model",
+                        config["model"]["id"],
+                        "--adapter-path",
+                        str(adapter_path),
+                        "--data",
+                        str(temp_dir),
+                        "--test",
+                    ],
+                    cwd=str(Path.cwd()),
+                    capture_output=True,
+                    text=True,
+                )
+        else:
+            result = subprocess.run(
+                [
+                    PYTHON_BIN,
+                    "-m",
+                    "mlx_lm",
+                    "lora",
+                    "--model",
+                    config["model"]["id"],
+                    "--adapter-path",
+                    str(adapter_path),
+                    "--data",
+                    str(job_path / "compiled"),
+                    "--test",
+                ],
+                cwd=str(Path.cwd()),
+                capture_output=True,
+                text=True,
+            )
         log_handle.write(result.stdout)
         log_handle.write(result.stderr)
     if result.returncode != 0:
@@ -444,14 +561,32 @@ def generate_samples(job_dir: str | Path, config: Dict[str, Any]) -> List[Dict[s
     return results
 
 
+def existing_sample_outputs(job_dir: str | Path, config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    job_path = Path(job_dir)
+    sample_dir = job_path / "samples"
+    prompts = list(config["outputs"].get("sample_prompts", []))
+    results: List[Dict[str, Any]] = []
+    for index, prompt in enumerate(prompts, start=1):
+        output_path = sample_dir / f"sample-{index}.txt"
+        if not output_path.exists():
+            continue
+        results.append({"prompt": prompt, "path": str(output_path.resolve())})
+    return results
+
+
 def render_report(job_dir: str | Path, config: Dict[str, Any], sample_outputs: List[Dict[str, Any]]) -> None:
     job_path = Path(job_dir)
     manifest = json.loads((job_path / "compiled" / "dataset_manifest.json").read_text(encoding="utf-8"))
     warnings = list(config.get("warnings", []))
     warnings.extend(manifest.get("warnings", []))
-    if int(manifest.get("split_counts", {}).get("test", 0)) <= 0:
-        warnings.append("Evaluation was skipped because no test split was generated.")
+    eval_split = select_eval_split(manifest)
+    if eval_split is None:
+        warnings.append("Evaluation was skipped because no validation or test split was generated.")
+    elif eval_split == "valid":
+        warnings.append("Evaluation used the validation split because no test split was generated.")
     metrics = load_metrics(job_path / "metrics.jsonl")
+    export_manifest = load_export_manifest(job_path)
+    gguf_outputs = [] if export_manifest is None else list(export_manifest.get("outputs", []))
     write_report(
         path=job_path / "report.md",
         job_name=config["name"],
@@ -460,6 +595,7 @@ def render_report(job_dir: str | Path, config: Dict[str, Any], sample_outputs: L
         warnings=warnings,
         metrics=metrics,
         sample_outputs=sample_outputs,
+        gguf_outputs=gguf_outputs,
     )
 
 
@@ -482,3 +618,14 @@ def validate_only(config_path: str | Path) -> Dict[str, Any]:
         "manifest": prepared["manifest"],
         "warnings": prepared["warnings"],
     }
+
+
+def run_export(job_dir: str | Path, quants: Optional[List[str]] = None) -> Path:
+    job_path = Path(job_dir)
+    snapshot_path = job_path / "config.snapshot.yaml"
+    if not snapshot_path.exists():
+        raise ValueError(f"Missing {snapshot_path}.")
+    config = load_job_config(snapshot_path)
+    export_job_to_gguf(job_path, requested_quants=quants, python_bin=PYTHON_BIN)
+    render_report(job_path, config, existing_sample_outputs(job_path, config))
+    return job_path

@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.teich-tune-validate/
+.smoke/
+.gguf-python/
+build/
+dist/
+jobs/
+examples/*/jobs/

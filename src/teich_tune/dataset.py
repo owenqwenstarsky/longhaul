@@ -83,6 +83,11 @@ def deterministic_tool_call_id(record_index: int, event_index: int, name: str, a
     return f"call_{digest[:12]}"
 
 
+def deterministic_split_key(record: Dict[str, Any], split_seed: str) -> str:
+    canonical = json.dumps(record, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha1(f"{split_seed}:{canonical}".encode("utf-8")).hexdigest()
+
+
 def _load_tool_catalog(path: Optional[str | Path]) -> Dict[str, Dict[str, Any]]:
     if path is None:
         return {}
@@ -273,21 +278,91 @@ def validate_record(
     }, warnings, has_tools
 
 
-def assign_split(record: Dict[str, Any], split_seed: str) -> str:
-    canonical = json.dumps(record, sort_keys=True, separators=(",", ":"))
-    digest = hashlib.sha1(f"{split_seed}:{canonical}".encode("utf-8")).hexdigest()
-    bucket = int(digest[:8], 16) % 100
-    if bucket < 90:
-        return "train"
-    if bucket < 95:
-        return "valid"
-    return "test"
+def plan_auto_split(
+    total_records: int,
+    split_config: Optional[Dict[str, Any]],
+) -> Tuple[Dict[str, int], List[str]]:
+    warnings: List[str] = []
+    config = split_config or {}
+    train_ratio = float(config.get("train_ratio", 0.9))
+    valid_ratio = float(config.get("valid_ratio", 0.05))
+    test_ratio = float(config.get("test_ratio", 0.05))
+    min_train = max(1, int(config.get("min_train_records", 1)))
+    min_valid = max(0, int(config.get("min_valid_records", 1)))
+    min_test = max(0, int(config.get("min_test_records", 1)))
+    min_records_for_test = max(0, int(config.get("min_records_for_test_split", 10)))
+
+    if total_records <= 0:
+        return {"train": 0, "valid": 0, "test": 0}, warnings
+
+    if total_records <= min_train:
+        warnings.append(
+            f"Dataset has only {total_records} record; no held-out validation split can be created automatically."
+        )
+        return {"train": total_records, "valid": 0, "test": 0}, warnings
+
+    if total_records < min_records_for_test:
+        valid = min(total_records - min_train, max(min_valid, int(round(total_records * valid_ratio))))
+        train = total_records - valid
+        if valid <= 0:
+            warnings.append(
+                f"Dataset has only {total_records} records; no held-out validation or test split can be created automatically."
+            )
+            return {"train": total_records, "valid": 0, "test": 0}, warnings
+        warnings.append(
+            "Automatic split is using validation only and omitting the test split "
+            f"until the dataset reaches at least {min_records_for_test} records."
+        )
+        return {"train": train, "valid": valid, "test": 0}, warnings
+
+    valid = max(min_valid, int(total_records * valid_ratio))
+    test = max(min_test, int(total_records * test_ratio))
+    train = total_records - valid - test
+    if train < min_train:
+        deficit = min_train - train
+        if test > min_test:
+            shrink = min(deficit, test - min_test)
+            test -= shrink
+            deficit -= shrink
+        if deficit > 0 and valid > min_valid:
+            shrink = min(deficit, valid - min_valid)
+            valid -= shrink
+            deficit -= shrink
+        train = total_records - valid - test
+
+    if train < min_train:
+        warnings.append(
+            "Automatic split could not satisfy the configured minimum test size; "
+            "falling back to validation-only evaluation."
+        )
+        valid = min(total_records - min_train, max(min_valid, int(round(total_records * valid_ratio))))
+        test = 0
+        train = total_records - valid
+
+    return {"train": train, "valid": valid, "test": test}, warnings
+
+
+def split_validated_records(
+    records: List[Dict[str, Any]],
+    split_seed: str,
+    split_config: Optional[Dict[str, Any]],
+) -> Tuple[Dict[str, List[Dict[str, Any]]], List[str]]:
+    counts, warnings = plan_auto_split(len(records), split_config)
+    ranked = sorted(records, key=lambda record: deterministic_split_key(record, split_seed))
+    train_cutoff = counts["train"]
+    valid_cutoff = train_cutoff + counts["valid"]
+    return {
+        "train": ranked[:train_cutoff],
+        "valid": ranked[train_cutoff:valid_cutoff],
+        "test": ranked[valid_cutoff:valid_cutoff + counts["test"]],
+    }, warnings
 
 
 def load_or_split_dataset(
     source: str | Path,
     tool_catalog_path: Optional[str | Path],
     split_seed: str,
+    split_config: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, List[Dict[str, Any]]], ValidationResult]:
     source_path = Path(source)
     if source_path.is_dir():
@@ -316,12 +391,16 @@ def load_or_split_dataset(
         if combined_records:
             total_tokens = sum(estimate_record_tokens(record) for record in combined_records)
             stats.avg_estimated_tokens = total_tokens / len(combined_records)
+        if len(split_records["valid"]) <= 0 and len(split_records["test"]) <= 0:
+            combined_warnings.append("Validation and test splits are empty; evaluation will be skipped.")
+        elif len(split_records["valid"]) <= 0:
+            combined_warnings.append("Validation split is empty; training will run without held-out validation.")
+        elif len(split_records["test"]) <= 0:
+            combined_warnings.append("Test split is empty; evaluation will fall back to the validation split.")
         validation = ValidationResult(records=combined_records, warnings=combined_warnings, stats=stats)
         return split_records, validation
 
     validation = validate_dataset_file(source_path, tool_catalog_path)
-    split_records = {"train": [], "valid": [], "test": []}
-    for record in validation.records:
-        split_name = assign_split(record, split_seed=split_seed)
-        split_records[split_name].append(record)
+    split_records, split_warnings = split_validated_records(validation.records, split_seed=split_seed, split_config=split_config)
+    validation.warnings.extend(split_warnings)
     return split_records, validation

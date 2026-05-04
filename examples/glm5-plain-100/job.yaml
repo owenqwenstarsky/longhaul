@@ -1,0 +1,39 @@
+{
+  "name": "glm5-plain-100",
+  "model": {
+    "id": "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
+  },
+  "data": {
+    "source": "data",
+    "tool_catalog": "data/tool_catalog.json",
+    "split_seed": "glm5-plain-100"
+  },
+  "training": {
+    "profile": "conservative",
+    "thinking_mode": "omit",
+    "batch_size": 1,
+    "effective_batch_size": 8,
+    "learning_rate": 1e-5,
+    "max_seq_length": 2048,
+    "num_layers": 8,
+    "grad_checkpoint": true,
+    "mask_prompt": true,
+    "lora_rank": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "steps_per_report": 10,
+    "steps_per_eval": 10,
+    "val_batches": -1,
+    "save_every": 25,
+    "early_stopping_patience": 2,
+    "epochs": 3
+  },
+  "outputs": {
+    "jobs_dir": "jobs",
+    "sample_prompts": [
+      "Explain how to convert a lowercase Python string to uppercase.",
+      "Rewrite this politely: send me the file now.",
+      "Answer briefly: what do beaches and deserts collect large deposits of?"
+    ]
+  }
+}

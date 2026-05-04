@@ -11,6 +11,7 @@ from teich_tune.runner import (
     init_workspace,
     print_report,
     run_eval,
+    run_export,
     run_resume,
     run_train,
     validate_only,
@@ -23,6 +24,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     init_parser = subparsers.add_parser("init", help="Create a starter workspace.")
     init_parser.add_argument("--dir", default=".", help="Workspace directory to initialize.")
+    init_parser.add_argument(
+        "--template",
+        choices=["chat", "tools"],
+        default="chat",
+        help="Starter dataset template to generate. Defaults to chat.",
+    )
 
     validate_parser = subparsers.add_parser("validate", help="Validate config and dataset.")
     validate_parser.add_argument("config", nargs="?", default="job.yaml", help="Path to job config.")
@@ -40,6 +47,19 @@ def build_parser() -> argparse.ArgumentParser:
     eval_parser = subparsers.add_parser("eval", help="Run evaluation and sample generation for an existing job.")
     eval_parser.add_argument("job_dir", help="Existing job directory.")
 
+    export_parser = subparsers.add_parser(
+        "export",
+        help="Export an existing job to GGUF for llama.cpp-compatible runtimes.",
+    )
+    export_parser.add_argument("job_dir", help="Existing job directory.")
+    export_parser.add_argument(
+        "--quant",
+        dest="quants",
+        action="append",
+        default=None,
+        help="Quantization target or alias (`q8`, `q4`, `q8_0`, `q4_k_m`, `f16`, `bf16`). Repeat for multiple outputs.",
+    )
+
     report_parser = subparsers.add_parser("report", help="Print the generated report for an existing job.")
     report_parser.add_argument("job_dir", help="Existing job directory.")
 
@@ -51,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "init":
-            created = init_workspace(args.dir)
+            created = init_workspace(args.dir, template=args.template)
             print(json.dumps({"created": created}, indent=2))
             return 0
         if args.command == "validate":
@@ -73,6 +93,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "eval":
             job_dir = run_eval(args.job_dir)
+            print(json.dumps({"job_dir": str(Path(job_dir).resolve())}, indent=2))
+            return 0
+        if args.command == "export":
+            job_dir = run_export(args.job_dir, quants=args.quants)
             print(json.dumps({"job_dir": str(Path(job_dir).resolve())}, indent=2))
             return 0
         if args.command == "report":

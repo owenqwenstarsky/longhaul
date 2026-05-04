@@ -7,8 +7,9 @@
 - Validates a strict TeichAI-style JSONL dataset format.
 - Resolves tool definitions from a shared catalog.
 - Compiles canonical records into MLX-compatible `chat` or `tools` JSONL.
-- Applies Qwen-specific conservative defaults aimed at reducing overfitting.
+- Applies Qwen-specific `conservative` and `expert` training presets.
 - Runs one local MLX job at a time with resumable artifacts and reports.
+- Uses deterministic auto-splitting with validation/test fallback rules that work on small datasets.
 
 ## Install
 
@@ -25,11 +26,57 @@ python3 -m pip install -e .
 ## Quick start
 
 ```bash
-teich-tune init
+teich-tune init --template chat
 teich-tune validate job.yaml
 teich-tune compile -c job.yaml
 teich-tune train -c job.yaml
 ```
+
+Use `--template tools` if you want a starter tool-calling dataset instead of plain chat.
+
+## GGUF export
+
+`teich-tune` can export a completed MLX LoRA job to GGUF for `llama.cpp` and other GGUF runtimes.
+
+Requirements:
+
+- A `llama.cpp` checkout with `convert_hf_to_gguf.py`
+- A built `llama-quantize` (or `quantize`) binary
+- Either `outputs.gguf.llama_cpp_dir` in `job.yaml` or `LLAMA_CPP_DIR` in the environment
+
+Manual export:
+
+```bash
+teich-tune export /path/to/job
+teich-tune export /path/to/job --quant q8 --quant q4_k_m --quant bf16
+```
+
+Default aliases:
+
+- `q8` -> `Q8_0`
+- `q4` -> `Q4_K_M`
+
+Recommended config snippet:
+
+```json
+{
+  "outputs": {
+    "jobs_dir": "jobs",
+    "sample_prompts": [
+      "Summarize the assistant behavior you were trained for.",
+      "Respond to a user request in the target style."
+    ],
+    "gguf": {
+      "enabled": true,
+      "quants": ["q8", "q4"],
+      "base_outtype": "f16",
+      "llama_cpp_dir": "../llama.cpp"
+    }
+  }
+}
+```
+
+When `outputs.gguf.enabled` is `true`, `teich-tune train` and `teich-tune resume` automatically export GGUF artifacts after evaluation finishes. Exported files are written under `jobs/<job>/exports/gguf/`, and the job report includes the generated GGUF paths.
 
 ## Included examples
 
@@ -37,6 +84,24 @@ See [examples/README.md](/Users/owen/longhaul/examples/README.md) for two tiny s
 
 - [examples/chat-minimal/job.yaml](/Users/owen/longhaul/examples/chat-minimal/job.yaml)
 - [examples/tool-call/job.yaml](/Users/owen/longhaul/examples/tool-call/job.yaml)
+- [examples/glm5-plain-100/job.yaml](/Users/owen/longhaul/examples/glm5-plain-100/job.yaml)
+
+## Prepared subset example
+
+`examples/glm5-plain-100/` contains a real plain-chat subset prepared from the Hugging Face dataset `Jackrong/GLM-5.1-Reasoning-1M-Cleaned`.
+
+- The subset uses 100 examples total with explicit `90/5/5` train/valid/test splits.
+- `<think>...</think>` reasoning blocks are stripped before training.
+- The prep script filters out oversized records to keep the subset suitable for a small Qwen 2.5 1.5B run.
+
+To regenerate that subset locally:
+
+```bash
+PYTHONPATH=src python3.10 scripts/prepare_glm5_reasoning_subset.py \
+  --count 100 \
+  --max-estimated-tokens 1800 \
+  --output-dir examples/glm5-plain-100/data
+```
 
 ## Canonical dataset format
 
@@ -83,6 +148,31 @@ Assistant reasoning can be stored separately:
 ```
 
 By default, `thinking` is omitted from the compiled training set.
+
+## Profiles
+
+- `conservative` is the default and keeps the LoRA config intentionally small.
+- `expert` raises the default LoRA rank, effective batch size, and trainable layers. It is still overrideable per field in `job.yaml`.
+
+## Auto split behavior
+
+- Single-file datasets are split deterministically.
+- Datasets with fewer than 10 records use train+valid only by default.
+- Once the dataset reaches 10 or more records, Teich Tune creates train, valid, and test splits.
+- If no test split exists, `teich-tune eval` falls back to the validation split instead of silently doing nothing.
+
+## Artifact policy
+
+Commit source files and example datasets. Do not commit generated run artifacts.
+
+Ignored by default:
+
+- `jobs/`
+- `examples/*/jobs/`
+- `.smoke/`
+- `.teich-tune-validate/`
+- `__pycache__/`
+- `*.egg-info/`
 
 ## Notes
 

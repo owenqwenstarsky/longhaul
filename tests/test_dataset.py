@@ -7,6 +7,7 @@ from teich_tune.compiler import compile_record
 from teich_tune.dataset import (
     deterministic_tool_call_id,
     load_or_split_dataset,
+    plan_auto_split,
     validate_records,
 )
 from teich_tune.registry import resolve_model
@@ -125,6 +126,16 @@ class DatasetTests(unittest.TestCase):
                 {name: len(records) for name, records in splits_a.items()},
                 {name: len(records) for name, records in splits_b.items()},
             )
+
+    def test_small_auto_split_uses_validation_only(self) -> None:
+        counts, warnings = plan_auto_split(2, {"min_records_for_test_split": 10})
+        self.assertEqual(counts, {"train": 1, "valid": 1, "test": 0})
+        self.assertTrue(any("validation only" in warning for warning in warnings))
+
+    def test_auto_split_uses_test_once_dataset_is_large_enough(self) -> None:
+        counts, warnings = plan_auto_split(10, {"min_records_for_test_split": 10})
+        self.assertEqual(counts, {"train": 8, "valid": 1, "test": 1})
+        self.assertFalse(warnings)
 
 
 if __name__ == "__main__":

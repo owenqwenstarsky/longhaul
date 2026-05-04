@@ -1,0 +1,13 @@
+{
+  "source_dataset": "Jackrong/GLM-5.1-Reasoning-1M-Cleaned",
+  "source_config": "main",
+  "source_split": "train",
+  "requested_examples": 100,
+  "prepared_examples": 100,
+  "seed": "glm5-plain-100",
+  "train_count": 90,
+  "valid_count": 5,
+  "test_count": 5,
+  "max_estimated_tokens": 1800,
+  "thinking_removed": true
+}
